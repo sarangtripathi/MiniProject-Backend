@@ -24,6 +24,7 @@ app.get('/logout', (req,res) => {
     res.cookie("token","");
     res.redirect("/login");
 })
+
 app.get('/profile', isLoggedIn, async (req,res) => {
   let user = await userModel.findOne({email: req.user.email}).populate("posts");
   // user.populate("posts");
@@ -31,11 +32,19 @@ app.get('/profile', isLoggedIn, async (req,res) => {
   res.render("profile", {user})
   
 });
+app.get('/dashboard', isLoggedIn, async (req,res) => {
+  let user = await userModel.findOne({ email: req.user.email });
+  let posts = await postModel.find().populate("user");
+  
+  res.render("dashboard", {posts,user})
+  
+});
 
 app.get('/profile/upload', (req,res) => {
   res.render("profileupload");
   
 });
+
 app.post('/upload',isLoggedIn, upload.single("image"), async (req,res) => {
   // console.log(req.file);
   let user = await userModel.findOne({email: req.user.email});
@@ -74,7 +83,8 @@ app.get("/like/:id", isLoggedIn, async (req, res) => {
 
    await post.save();
 
-  res.redirect("/profile");
+  // res.redirect("/profile");
+  res.redirect(req.get("referer")); //to redirect onto the same page that initiated req
 });
 
 app.get("/edit/:id", isLoggedIn, async (req, res) => {
@@ -91,7 +101,6 @@ app.post("/update/:id", isLoggedIn, async (req, res) => {
 
   res.redirect("/profile");
 });
-
 
 // app.get('/allUsers' , async(req,res) => {
 //   const data = await userModel.find();
@@ -118,7 +127,8 @@ app.post('/register', async (req,res) => {
     let token = jwt.sign({email: email, userid: user._id}, "shh");
     res.cookie("token", token);
 
-    res.send("registered");
+    // res.send("registered");
+    res.redirect("/dashboard");
 
 })
 
@@ -131,7 +141,7 @@ app.post("/login", async (req, res) => {
     if(result){ 
       let token = jwt.sign({ email: email, userid: userExist._id }, "shh");
       res.cookie("token", token);
-      res.status(200).redirect("/profile");
+      res.status(200).redirect("/dashboard");
     }
     else res.redirect("/login")
   })
@@ -141,7 +151,7 @@ function isLoggedIn(req,res,next){
   if(req.cookies.token=== "") res.redirect("/login");
   else{
     let data = jwt.verify(req.cookies.token , "shh")
-    console.log(data);
+    // console.log(data);
     
     req.user = data;
     next();
